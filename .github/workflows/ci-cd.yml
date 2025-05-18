@@ -49,7 +49,7 @@ jobs:
     - name: Deploy to Azure Container App
       uses: azure/container-apps-deploy-action@v1
       with:
-        resourceGroup: ctse                   
+        resourceGroup: ctsenew                   
         containerAppName: authservice                                   
         imageToDeploy: sapna1217/auth-service:latest        
         containerAppEnvironment: myContainerEnv           
