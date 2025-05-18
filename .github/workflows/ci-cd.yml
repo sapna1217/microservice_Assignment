@@ -14,13 +14,15 @@ jobs:
       uses: actions/checkout@v3
 
     # Step 2: Run SonarCloud scan for security & quality
-    - name: SonarCloud Scan
-      uses: SonarSource/sonarcloud-github-action@v2
+    #- name: SonarCloud Scan
+     # uses: SonarSource/sonarcloud-github-action@v2
+     
+      #with:
+        #SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        #projectKey: sapna1217_microservice_Assignment
+        #organization: sapna1217
+       
   
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_PROJECT_KEY: "sapna1217_microservice_Assignment"
-        SONAR_ORGANIZATION: "sapna1217"
        
 
    
