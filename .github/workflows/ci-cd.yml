@@ -41,11 +41,7 @@ jobs:
         push: true
         tags: sapna99/auth-service:latest                 
 
-    # Step 5: Login to Azure
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    #
 
     # Step 6: regitDeploy to Azure Container App
     - name: Deploy to Azure Container App
