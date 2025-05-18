@@ -1,53 +1,99 @@
-name: Build, Scan & Deploy to Azure
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build-and-deploy:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+  sonarcloud:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install SonarScanner
+        run: npm install --no-save sonar-scanner
+
+      - name: Run SonarScanner
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORG: ${{ secrets.SONAR_ORG }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+        run: |
+          npx sonar-scanner \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.organization=$SONAR_ORG \
+            -Dsonar.projectKey=$SONAR_PROJECT_KEY
+
+  build-and-push:
+    needs: sonarcloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY_URL }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: |
+              ${{ secrets.DOCKER_USERNAME }}/auth-service:latest
+              ${{ secrets.DOCKER_USERNAME }}/auth-service:${{ github.sha }}
+  
+  deploy-image:
+    name: Push Image into Azure Container Registry
+    needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: Checkout the repository code
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    # Step 2: Run SonarCloud scan for security & quality
-    #- name: SonarCloud Scan
-     # uses: SonarSource/sonarcloud-github-action@v2
-     
-      #with:
-        #SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        #projectKey: sapna1217_microservice_Assignment
-        #organization: sapna1217
-       
-  
-       
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}   
+          username: ${{ secrets.ACR_USERNAME }}       
+          password: ${{ secrets.ACR_PASSWORD }}      
+          
+      - name: Pull image from Docker Hub
+        run: docker pull docker.io/kishen2000/auth-service:latest
 
-   
-    # Step 3: Log in to Docker Hub
-    - name: Docker Hub Login
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Tag image for ACR
+        run: |
+          docker tag docker.io/kishen2000/auth-service:latest \
+                     ${{ secrets.ACR_LOGIN_SERVER }}/auth-service:latest
 
-    # Step 4: Build and push Docker image
-    - name: Build and Push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: sapna99/auth-service:latest                 
-
-    #
-
-    # Step 6: regitDeploy to Azure Container App
-    - name: Deploy to Azure Container App
-      uses: azure/container-apps-deploy-action@v1
-      with:
-        resourceGroup: ctsenew                   
-        containerAppName: authservice                                   
-        imageToDeploy: sapna99/auth-service:latest        
-        containerAppEnvironment: myContainerEnv           
+      - name: Push tagged image to ACR
+        run: docker push ${{ secrets.ACR_LOGIN_SERVER }}/auth-service:latest
