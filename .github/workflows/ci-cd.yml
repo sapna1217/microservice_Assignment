@@ -45,11 +45,11 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # Step 6: Deploy to Azure Container App
+    # Step 6: regitDeploy to Azure Container App
     - name: Deploy to Azure Container App
       uses: azure/container-apps-deploy-action@v1
       with:
         resourceGroup: ctsenew                   
         containerAppName: authservice                                   
-        imageToDeploy: sapna1217/auth-service:latest        
+        imageToDeploy: sapna99/auth-service:latest        
         containerAppEnvironment: myContainerEnv           
